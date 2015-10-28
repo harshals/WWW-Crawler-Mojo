@@ -46,7 +46,11 @@ sub serialize {
 sub deserialize {
     return shift->blob ? thaw(shift) : WWW::Crawler::Mojo::Job->new( url => Mojo::URL->new(shift) );
 }
-
+sub reset {
+    my $self = shift;
+    my $table = $self->table_name;
+	$self->jobs->query("update $table set completed = 0");
+}
 sub dequeue {
     my $self = shift;
     my $table = $self->table_name;
@@ -54,7 +58,7 @@ sub dequeue {
 	my $last;
 	eval {
 		my $tx = $self->jobs->begin;
-		$last = $self->jobs->query("select id, data from $table where completed = 0 order by id limit 1" )->hash;
+		$last = $self->jobs->query("select id, data from $table where completed = 0 order by id asc limit 1 for update" )->hash;
 		$self->jobs->query("update $table set completed = 1 where id = ?", $last->{id}) if $last->{id};
 		$tx->commit;
 	};
