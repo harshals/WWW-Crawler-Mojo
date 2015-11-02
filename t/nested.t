@@ -30,6 +30,8 @@ $daemon->listen(['http://127.0.0.1'])->start;
 my $port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->handle->sockport;
 my $base = Mojo::URL->new("http://127.0.0.1:$port");
 my $bot = WWW::Crawler::Mojo->new;
+
+$bot->queue(WWW::Crawler::Mojo::Queue::MySQL->new($ENV{TEST_ONLINE}, table_name => 'test'));
 $bot->queue->debug(1);
 $bot->queue->redundancy ( sub { return sub {
 	my $job = shift;

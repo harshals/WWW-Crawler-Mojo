@@ -9,7 +9,7 @@ use Storable qw(freeze thaw );
 has debug => 0;
 has table_name => 'jobs';
 has 'jobs';
-has blob => 0;
+has blob => 1;
 
 sub new {
     my ($class, $conn, %opts) = @_;
