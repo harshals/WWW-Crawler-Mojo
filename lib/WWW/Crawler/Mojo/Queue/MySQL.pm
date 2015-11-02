@@ -28,18 +28,16 @@ sub empty {
 	my $table = $self->table_name;
 	$self->jobs->query( "delete from $table");
 }
-
-has redundancy => sub {
-    my %fix;
-	my $self = shift;
+has redundancy => sub { 
     
+    my $self = shift;
     return sub {
-        my $d = $_[0]->digest;
-	print STDERR $_[0]->crap;
-        return 1 if $fix{$d};
-        $fix{$d} = 1;
-        return;
-    };
+        my $job = shift;
+        my $table = $self->table_name;
+        $self->debug and warn "checking duplicates for " , $job->url, "\n" ;
+        my $result = $self->jobs->query("select id from $table where digest = ?", $job->digest)->hash;
+        return ($result) ? $result->{id} : undef;
+    } 
 };
 
 sub serialize {
@@ -65,8 +63,9 @@ sub dequeue {
 		$self->jobs->query("update $table set completed = 1 where id = ?", $last->{id}) if $last->{id};
 		$tx->commit;
 	};
-	warn $@ if $@;
-	$self->debug and $last->{id} and warn "removing " , $self->deserialize($last->{data})->url , "\n";
+	warn "error in dequeue is ",  $@ if $@;
+
+	$self->debug and $last->{id} and warn "removing " , $last->{id}, " with url ",  $self->deserialize($last->{data})->url , "\n";
 
     return ($last->{id}) ? $self->deserialize($last->{data}) :  undef;
 }
@@ -104,21 +103,24 @@ sub shuffle { }
 sub _enqueue {
     my ($self, $job, $requeue) = @_;
     my $table = $self->table_name;
-	my $is_redundant = $self->redundancy->($job);
+	my $is_redundant = $self->redundancy->($job) || 0;
 
-	$self->debug and warn "adding " , $job->url , "\n";
-	$self->debug and warn "curent jobs is $is_redundant\n";
+	$self->debug and warn "adding \[$is_redundant\]:" , $job->url , "\n";
     return if (!$requeue && $is_redundant);
 	eval {
 		my $tx = $self->jobs->begin;
-		my $result = $self->jobs->query("delete from $table where completed = 1 and digest = ?", $job->digest) if $requeue;
-		$requeue and $result->affected_rows ne 1 and warn "could not delete existing row ", $job->url, "\n";
-		$result = $self->jobs->query("insert into $table (digest, data, completed) values(?,?,?)", $job->digest, $self->serialize($job), 0 );
-		$result->affected_rows ne 1 and warn "could not add ", $job->url, "\n";
-		$self->debug and $result->affected_rows eq 1 and warn "added " , $job->url , "\n";
+        my ($result, $can_insert) = (undef , 1);
+        if ($requeue) {
+            $result = $self->jobs->query("delete from $table where completed = 1 and digest = ?", $job->digest) ;
+            $can_insert = $result->affected_rows;
+            $self->debug and !$result->affected_rows and warn "Can't requeue!found a pending job for ", $job->url, "\n";
+        }
+        return unless $can_insert;
+        $result = $self->jobs->query("insert into $table (digest, data, completed) values(?,?,?)", $job->digest, $self->serialize($job), 0 );
+		$self->debug and $result->affected_rows eq 1 and warn "added \[" , $result->last_insert_id , "\] :", $job->url , "\n";
 		$tx->commit;
 	};
-	warn $@ if $@;
+	warn "error in enqueue is ", $@ if $@;
     return $self;
 }
 

@@ -16,6 +16,8 @@ use Mojo::Util qw/md5_sum/;
 
 my $queue = WWW::Crawler::Mojo::Queue::MySQL->new($ENV{TEST_ONLINE}, table_name => 'testing_jobs');
 $queue->empty;
+$queue->blob(0);
+$queue->debug(1);
 
 my $url = 'http://3aclothing.com/content-about-us';
 
@@ -43,5 +45,5 @@ $queue->requeue($job1);
 is $queue->length, 1, 'requeue will increment queue by 1';
 
 $queue->requeue($job1);
-is $queue->length, 1, 'requeue will increment queue by 1';
+is $queue->length, 1, 'length should still be 1';
 done_testing;

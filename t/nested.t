@@ -5,9 +5,17 @@ use Test::Mojo;
 use utf8;
 use Data::Dumper;
 use Mojo::IOLoop;
+use File::Basename 'dirname';
+use File::Spec::Functions qw{catdir splitdir rel2abs canonpath};
+use lib catdir(dirname(__FILE__), '../lib');
+use lib catdir(dirname(__FILE__), 'lib');
+
+
 use WWW::Crawler::Mojo;
+use WWW::Crawler::Mojo::Queue::MySQL;
 use Data::Printer;
 use Test::More ;
+
 
 {
     package MockServer;
@@ -33,25 +41,24 @@ my $bot = WWW::Crawler::Mojo->new;
 
 $bot->queue(WWW::Crawler::Mojo::Queue::MySQL->new($ENV{TEST_ONLINE}, table_name => 'test'));
 $bot->queue->debug(1);
-$bot->queue->redundancy ( sub { return sub {
-	my $job = shift;
-	print STDERR $job->crap;
-	my $table = $bot->table_name;
-	$bot->queue->debug and warn "checking duplicates for " , $job->url, "\n" ;
-	return $bot->jobs->query("select id from $table where completed = 1 and digest = ?", $job->digest)->hash->{id};
-} });
-
 $bot->enqueue(WWW::Crawler::Mojo::resolve_href($base, '/index.html'));
 
-my %urls;
-my %contexts;
+my %errors;
 
 $bot->on('res' => sub {
     my ($bot, $scrape, $job, $res) = @_;
     return unless $res->code == 200;
+    warn "scraping ", $job->url, "\n";
     for my $job ($scrape->()) {
         $bot->enqueue($job);
     }
+});
+
+$bot->on(error => sub {
+        my ($bot, $error, $job) = @_;
+        warn " requeing on error: $_[1] \n";
+        $errors{ $job->digest}++ ;
+        $bot->requeue($job) if $errors{ $job->digest} < 2;
 });
 
 $bot->init;
