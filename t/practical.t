@@ -6,7 +6,7 @@ use utf8;
 use Data::Dumper;
 use Mojo::IOLoop;
 use WWW::Crawler::Mojo;
-
+use Data::Printer;
 use Test::More tests => 30;
 
 {
@@ -30,6 +30,8 @@ $daemon->listen(['http://127.0.0.1'])->start;
 my $port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->handle->sockport;
 my $base = Mojo::URL->new("http://127.0.0.1:$port");
 my $bot = WWW::Crawler::Mojo->new;
+$bot->queue->empty;
+$bot->queue->blob(1);
 $bot->enqueue(WWW::Crawler::Mojo::resolve_href($base, '/index.html'));
 
 my %urls;
@@ -41,59 +43,60 @@ $bot->on('res' => sub {
     return unless $res->code == 200;
     for my $job ($scrape->()) {
         $bot->enqueue($job);
-        $contexts{$job} = $job->context;
+        $contexts{$job->url} = $job->context;
     }
 });
 
 $bot->init;
-
 Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-
+my @keys = keys %urls;
+print p( @keys);
 is((scalar keys %urls), 10, 'right length');
 
 my $q;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/index.html')};
 is $q->depth, 0;
 is $q->referrer, undef;
-is $contexts{$q}, undef;
+is $contexts{$q->url}, undef;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/js/js1.js')};
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-is $contexts{$q},
+print STDERR "coming here ", $q->url ,"\n";
+is ref $contexts{$q->url}, 'Mojo::DOM';
+is $contexts{$q->url},
     qq{<script src="./js/js1.js" type="text/javascript"></script>};
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/css/css1.css')};
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-is $contexts{$q},
+is ref $contexts{$q->url}, 'Mojo::DOM';
+is $contexts{$q->url},
     qq{<link href="./css/css1.css" rel="stylesheet" type="text/css">};
 my $parent2 = $q;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/img/png1.png')};
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-is $contexts{$q}, qq{<img alt="png1" src="./img/png1.png">};
+is ref $contexts{$q->url}, 'Mojo::DOM';
+is $contexts{$q->url}, qq{<img alt="png1" src="./img/png1.png">};
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/img/png2.png')};
 is $q->depth, 2;
-is ref $contexts{$q}, 'Mojo::URL';
-is $contexts{$q}, qq{http://127.0.0.1:$port/css/css1.css};
+is ref $contexts{$q->url}, 'Mojo::URL';
+is $contexts{$q->url}, qq{http://127.0.0.1:$port/css/css1.css};
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/img/png3.png')};
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-like $contexts{$q},
+is ref $contexts{$q->url}, 'Mojo::DOM';
+like $contexts{$q->url},
     qr{<div style="background-image:url\(\./img/png3.png\)">.+</div>}s;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/space.txt')};
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-like $contexts{$q}, qr{<a href=" ./space.txt ">foo</a>}s;
+is ref $contexts{$q->url}, 'Mojo::DOM';
+like $contexts{$q->url}, qr{<a href=" ./space.txt ">foo</a>}s;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/form_receptor1')};
 is $q->url, "http://127.0.0.1:$port/form_receptor1";
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-like $contexts{$q}, qr{<form action="/form_receptor1" method="post">.+}s;
+is ref $contexts{$q->url}, 'Mojo::DOM';
+like $contexts{$q->url}, qr{<form action="/form_receptor1" method="post">.+}s;
 $q = $urls{WWW::Crawler::Mojo::resolve_href($base, '/form_receptor2?a=b&query2=default')};
 is $q->url, "http://127.0.0.1:$port/form_receptor2?a=b&query2=default";
 is $q->depth, 1;
-is ref $contexts{$q}, 'Mojo::DOM';
-like $contexts{$q}, qr{<form action="/form_receptor2\?a=b" method="get">.+}s;
+is ref $contexts{$q->url}, 'Mojo::DOM';
+like $contexts{$q->url}, qr{<form action="/form_receptor2\?a=b" method="get">.+}s;
 
 $base = Mojo::URL->new("http://127.0.0.1:$port");
 $bot = WWW::Crawler::Mojo->new;

@@ -5,6 +5,7 @@ use 5.010;
 use Mojo::Base 'Mojo::EventEmitter';
 use WWW::Crawler::Mojo::Job;
 use WWW::Crawler::Mojo::Queue::Memory;
+use WWW::Crawler::Mojo::Queue::MySQL;
 use WWW::Crawler::Mojo::UserAgent;
 use WWW::Crawler::Mojo::ScraperUtil qw{
             collect_urls_css html_handlers resolve_href decoded_body};
@@ -35,7 +36,7 @@ sub crawl {
 
 sub init {
     my ($self) = @_;
-    
+
     $self->on('empty', sub { say "Queue is drained out."; $self->stop })
                                         unless $self->has_subscribers('empty');
     $self->on('error', sub { say "An error occured during crawling $_[0]: $_[1]" })

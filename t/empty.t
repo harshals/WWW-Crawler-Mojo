@@ -7,6 +7,7 @@ use Data::Dumper;
 use Mojo::IOLoop;
 use WWW::Crawler::Mojo;
 use WWW::Crawler::Mojo::ScraperUtil qw{resolve_href};
+use feature 'say';
 
 use Test::More tests => 1;
 
@@ -31,12 +32,13 @@ $daemon->listen(['http://127.0.0.1'])->start;
 my $port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->handle->sockport;
 my $base = Mojo::URL->new("http://127.0.0.1:$port");
 my $bot = WWW::Crawler::Mojo->new;
+$bot->queue->empty;
 $bot->enqueue(resolve_href($base, '/index.html'));
-
 my %urls;
 
 $bot->on('res' => sub {
     my ($bot, $scrape, $job, $res) = @_;
+	say STDERR "scraping ", $job->url;
     $scrape->();
     $bot->enqueue($_) for ($scrape->());
     $urls{$job->url} = $job;

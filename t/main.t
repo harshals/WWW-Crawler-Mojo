@@ -11,7 +11,8 @@ use WWW::Crawler::Mojo;
 use WWW::Crawler::Mojo::Job;
 use Mojo::Message::Response;
 use Test::More tests => 33;
-
+use Data::Printer ;
+use feature 'say';
 {
     my $html = <<EOF;
 <html>
@@ -44,6 +45,9 @@ EOF
     $res->headers->content_type('text/html');
     
     my $bot = WWW::Crawler::Mojo->new;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
+
     $bot->init;
     for ($bot->scrape($res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/'))) {
         $bot->enqueue($_);
@@ -79,6 +83,8 @@ EOF
     
     my $bot2 = WWW::Crawler::Mojo->new;
     $bot2->init;
+	$bot2->queue->empty;
+	$bot2->queue->blob(1);
     for ($bot2->scrape($res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/a/a'))) {
         $bot2->enqueue($_);
     }
@@ -92,6 +98,8 @@ EOF
     
     my $bot3 = WWW::Crawler::Mojo->new;
     $bot3->init;
+	$bot3->queue->empty;
+	$bot3->queue->blob(1);
     for ($bot3->scrape($res, WWW::Crawler::Mojo::Job->new(url => 'https://example.com/'))) {
         $bot3->enqueue($_);
     }
@@ -130,6 +138,8 @@ EOF
     
     my $bot = WWW::Crawler::Mojo->new;
     $bot->init;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
     for ($bot->scrape($tx->res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/'))) {
         $bot->enqueue($_);
     }
@@ -141,6 +151,8 @@ EOF
     
     $bot = WWW::Crawler::Mojo->new;
     $bot->init;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
     for ($bot->scrape($tx->res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/a/'))) {
         $bot->enqueue($_);
     }
@@ -170,6 +182,8 @@ EOF
     
     my $bot = WWW::Crawler::Mojo->new;
     $bot->init;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
     for ($bot->scrape($tx->res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/'))) {
         $bot->enqueue($_);
     }
@@ -181,6 +195,8 @@ EOF
     
     $bot = WWW::Crawler::Mojo->new;
     $bot->init;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
     for ($bot->scrape($tx->res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/a/'))) {
         $bot->enqueue($_);
     }
@@ -210,6 +226,8 @@ EOF
     
     my $bot = WWW::Crawler::Mojo->new;
     $bot->init;
+	$bot->queue->empty;
+	$bot->queue->blob(1);
     for ($bot->scrape($tx->res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/'))) {
         $bot->enqueue($_);
     }
