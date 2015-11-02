@@ -307,7 +307,6 @@ EOF
         is_deeply $ret->[2]->to_hash, {foo => 'foo default', bar => 'bar default', baz => 'baz default'};
     }
 }
-
 {
     my $html = <<EOF;
 <html>
@@ -335,6 +334,7 @@ EOF
     $res->headers->content_type('text/html');
     
     my $bot = WWW::Crawler::Mojo->new;
+	$bot->queue->empty;
     $bot->init;
     for ($bot->scrape($res, WWW::Crawler::Mojo::Job->new(url => 'http://example.com/'))) {
         $bot->enqueue($_);
@@ -342,6 +342,7 @@ EOF
     
     my $job;
     $job = $bot->queue->dequeue;
+	print STDERR $job->url, "\n";
     is $job->literal_uri, '/index1.html', 'right url';
     is $job->url, 'http://example.com/index1.html?foo=default', 'right url';
     is $job->method, 'GET', 'right method';

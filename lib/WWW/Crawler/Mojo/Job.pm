@@ -8,7 +8,7 @@ use Mojo::Util qw(md5_sum);
 has 'closed';
 has 'context';
 has depth => 0;
-has 'literal_uri';
+has 'literal_uri' ;
 has 'method';
 has 'referrer';
 has redirect_history => sub { [] };

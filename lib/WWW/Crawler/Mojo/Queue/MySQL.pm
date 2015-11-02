@@ -6,6 +6,7 @@ use Mojo::Base 'WWW::Crawler::Mojo::Queue';
 use Mojo::mysql;
 use Storable qw(freeze thaw );
 
+has debug => 0;
 has table_name => 'jobs';
 has 'jobs';
 has blob => 0;
@@ -30,9 +31,11 @@ sub empty {
 
 has redundancy => sub {
     my %fix;
+	my $self = shift;
     
     return sub {
         my $d = $_[0]->digest;
+	print STDERR $_[0]->crap;
         return 1 if $fix{$d};
         $fix{$d} = 1;
         return;
@@ -62,8 +65,10 @@ sub dequeue {
 		$self->jobs->query("update $table set completed = 1 where id = ?", $last->{id}) if $last->{id};
 		$tx->commit;
 	};
+	warn $@ if $@;
+	$self->debug and $last->{id} and warn "removing " , $self->deserialize($last->{data})->url , "\n";
 
-    return ($last->{id}) ? $self->deserialize($last->{data}) :  "";
+    return ($last->{id}) ? $self->deserialize($last->{data}) :  undef;
 }
 
 sub enqueue {
@@ -99,13 +104,21 @@ sub shuffle { }
 sub _enqueue {
     my ($self, $job, $requeue) = @_;
     my $table = $self->table_name;
-    return if (!$requeue && $self->redundancy->($job));
+	my $is_redundant = $self->redundancy->($job);
+
+	$self->debug and warn "adding " , $job->url , "\n";
+	$self->debug and warn "curent jobs is $is_redundant\n";
+    return if (!$requeue && $is_redundant);
 	eval {
 		my $tx = $self->jobs->begin;
-		$self->jobs->query("delete from $table where completed = 1 and digest = ?", $job->digest) if $requeue;
-		$self->jobs->query("insert into $table (digest, data, completed) values(?,?,?)", $job->digest, $self->serialize($job), 0 );
+		my $result = $self->jobs->query("delete from $table where completed = 1 and digest = ?", $job->digest) if $requeue;
+		$requeue and $result->affected_rows ne 1 and warn "could not delete existing row ", $job->url, "\n";
+		$result = $self->jobs->query("insert into $table (digest, data, completed) values(?,?,?)", $job->digest, $self->serialize($job), 0 );
+		$result->affected_rows ne 1 and warn "could not add ", $job->url, "\n";
+		$self->debug and $result->affected_rows eq 1 and warn "added " , $job->url , "\n";
 		$tx->commit;
 	};
+	warn $@ if $@;
     return $self;
 }
 
