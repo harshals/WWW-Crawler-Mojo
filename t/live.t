@@ -17,13 +17,15 @@ use WWW::Crawler::Mojo::Queue::MySQL;
 use Data::Printer;
 use Test::More ;
 
-my $url = 'http://3aclothing.com/';
+
+my $url = 'http://www.eformz.in/';
+#my $url = 'http://www.diamonds.net/';
 
 my $bot = WWW::Crawler::Mojo->new;
 
 $bot->queue(WWW::Crawler::Mojo::Queue::MySQL->new($ENV{TEST_ONLINE}, table_name => 'test'));
 $bot->queue->empty;
-$bot->queue->debug(1);
+$bot->queue->debug(0);
 $bot->queue->blob(1);
 $bot->enqueue( WWW::Crawler::Mojo::Job::upgrade("WWW::Crawler::Mojo::Job", $url));
 
